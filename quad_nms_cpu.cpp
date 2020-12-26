@@ -27,7 +27,7 @@ void box_to_path(const float* box, Path& path);
 /// </summary>
 /// <param name="boxes"></param>
 /// <param name="conf_thresh"></param>
-void nms_cpu(const float* boxes, float conf_thresh, int* keep, int keep_num);
+void nms_cpu(float* boxes, int box_num, float threshold, int* keep, int& keep_num);
 
 void box_to_path(const float* box, Path& path) {
 	for (size_t i = 0; i < 4; i++)
@@ -75,8 +75,48 @@ void comput_iou(const float* box1, const float* box2, float* iou) {
 	return;
 }
 
-void nms_cpu(const float* boxes, float conf_thresh, int* keep, int keep_num) {
-
+/// <summary>
+/// 返回保留的框的index以及个数,确保框经过置信度的排序
+/// </summary>
+/// <param name="boxes">待处理的四边形with confidence;x1,y1,...,x4,y4,conf,...</param>
+/// <param name="box_num">框的个数</param>
+/// <param name="threshold">iou的阈值</param>
+/// <param name="keep">索引列表</param>
+/// <param name="keep_num">保留框的个数</param>
+void nms_cpu(float* boxes, int box_num, float threshold, int* keep, int& keep_num) {
+	int _keep_num = 0;
+	for (size_t i = 0; i < box_num; i++)
+	{
+		// 如果box的置信度设置为-1，则不对该点做任何处理
+		if (boxes[i * 9 + 8] == -1.) {
+			continue;
+		}
+		int j = i + 1;
+		float* current_box = &boxes[i * 9];
+		while (j<box_num)
+		{
+			if (boxes[j * 9 + 8] == -1.0) {
+				continue;
+			}
+			float* next_box = &boxes[j * 9];
+			float _iou;
+			comput_iou(current_box, next_box, &_iou);
+			// 如果iou大于阈值，说明重合度太高，可以认为是同一个对象，不保留
+			if (_iou >= threshold) {
+				boxes[j * 9 + 8] = -1.0; // 如果重合度太高，则将该box的置信度设置为0
+				continue;
+			}
+			
+			j = j + 1;
+		}
+		// 结束后，将当前box的index添加到keep中
+		keep[_keep_num] = i;
+		_keep_num = _keep_num + 1;
+		
+	}
+	// 整个程序结束后，将保留的box的个数返回
+	keep_num = _keep_num;
+	
 	return;
 }
 
@@ -104,20 +144,27 @@ int test_nms()
 
 	// 94,99,155,292,512,219,463,70
 	// 76,159,53,292,485,340,505,105
+	int box_num = 3;
 	float boxes[] = {
 		253,285,824,296,833,435,283,413,0.9,
 		215,267,853,296,826,449,246,414,0.8,
 		200,267,824,296,800,449,283,414,0.85,
 	};
 	
+	int* keep = new int[box_num];
+	int keep_num = 0;
+	float threshold = 0.7;
+	nms_cpu(&boxes[0], box_num, threshold, keep, keep_num);
+	cout << "number of keep boxes: " << keep_num << endl;
 
-	cout << "IoU: " << endl;
+	delete[] keep;
 
 	return 0;
 }
 
 int main() {
 	// 测试 计算IoU
-	test_compute_iou();
+	//test_compute_iou();
+	test_nms();
 	return 0;
 }
