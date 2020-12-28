@@ -1,13 +1,14 @@
 ﻿// quad-nms-cpu.cpp: 定义应用程序的入口点。
 //
 #include <iostream>
+#include <chrono>
 
 #include "clipper6.4.2/clipper.hpp"
 
 using namespace std;
 using namespace ClipperLib;
 
-void slice(const float* boxes, int box_dim, float* out, const int* indexes, int index_num);
+void slice(const float* boxes, size_t box_dim, float* out, const int* indexes, int index_num);
 
 /// <summary>
 /// 计算两个四边形的交并比
@@ -105,7 +106,7 @@ void nms_cpu(float* boxes, int box_num, float threshold, int* keep, size_t& keep
 			float _iou;
 			comput_iou(current_box, next_box, &_iou);
 			// 如果iou大于阈值，说明重合度太高，可以认为是同一个对象，不保留
-			printf("iou: %f\n", _iou);
+			//printf("iou: %f\n", _iou);
 			if (_iou >= threshold) {
 				boxes[j * 9 + 8] = -1.0; // 如果重合度太高，则将该box的置信度设置为0
 			}
@@ -123,7 +124,7 @@ void nms_cpu(float* boxes, int box_num, float threshold, int* keep, size_t& keep
 	return;
 }
 
-void slice(const float* boxes, int box_dim, float* out, const int* indexes, int index_num) {
+void slice(const float* boxes, size_t box_dim, float* out, const int* indexes, int index_num) {
 	// 迭代索引列表
 	for (size_t i = 0; i < index_num; i++)
 	{
@@ -131,7 +132,7 @@ void slice(const float* boxes, int box_dim, float* out, const int* indexes, int 
 		for (size_t j = 0; j < box_dim; j++)
 		{
 			// out的长度即是index_num
-			out[i * 8 + j] = boxes[index * 8 + j]; // 将index指向的box数据拷贝给out
+			out[i * box_dim + j] = boxes[index * box_dim + j]; // 将index指向的box数据拷贝给out
 		}
 	}
 	return;
@@ -173,17 +174,21 @@ int test_nms()
 	
 	int* keep = new int[box_num];
 	size_t keep_num = 0;
-	float threshold = 0.3;
+	size_t box_dim = 9;
+	float threshold = 0.2;
+	auto start = std::chrono::steady_clock::now();
 	nms_cpu(&boxes[0], box_num, threshold, keep, keep_num);
-	cout << "number of keep boxes: " << keep_num << endl;
+	auto end = std::chrono::steady_clock::now();
+	cout << "number of keep boxes: " << keep_num \
+		<< " cost " << std::chrono::duration<double, std::milli>(end - start).count() << " ms."<< endl;
 	float* out = new float[keep_num * 9];
-	slice(boxes, 9, out, keep, keep_num);
+	slice(boxes, box_dim, out, keep, keep_num);
 
 	for (size_t i = 0; i < keep_num; i++)
 	{
-		cout << "{" << out[i * 8] << "," << out[i * 8 + 1] << "," << out[i * 8 + 2] << "," << out[i * 8 + 3] \
-			<< "," << out[i * 8 + 4] << "," << out[i * 8 + 5] << "," << out[i * 8 + 6] << "," << out[i * 8 + 7] \
-			<< "," << out[i * 8 + 8] << "}";
+		cout << "{" << out[i * box_dim] << "," << out[i * box_dim + 1] << "," << out[i * box_dim + 2] << "," \
+			<< out[i * box_dim + 3] << "," << out[i * box_dim + 4] << "," << out[i * box_dim + 5] << "," \
+			<< out[i * box_dim + 6] << "," << out[i * box_dim + 7] << "," << out[i * box_dim + 8] << "}";
 		cout << endl;
 	}
 
