@@ -1,5 +1,7 @@
 # quad-nms-cpu
 
+[中文介绍](./README_CN.md)
+
 Use c++ clipper to implement quadrilateral NMS.
 
 ## Usage of python scripts
