@@ -1,14 +1,19 @@
 # quad-nms-cpu
-使用clipper实现四边形的nms
 
-## 使用说明
+Use c++ clipper to implement quadrilateral NMS.
 
-python脚本用来验证和可视化结果，和c++结果计算的iou进行比较
+## Usage of python scripts
 
-## 编译
+The python script is used to verify and visualize the result, and compare it with the iou calculated by the c++ result;
+
+`quad_iou.py` uses pyclipper to calculate the intersection ratio of two non-concave quadrilaterals for comparison with c++ calculation results;
+`visualize.py` is used to visualize the distribution of quadrilaterals;
+
+## compile c++
 
 ```
 mkdir build
 cd build
 cmake ..
 ```
+Run and test it.
